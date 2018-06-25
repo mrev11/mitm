@@ -1,0 +1,3 @@
+#!/bin/bash
+grep  --text $1  log/log-*  | tee log-sites
+less -S log-sites

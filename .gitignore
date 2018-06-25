@@ -27,3 +27,4 @@ g-*
 /*.savex
 
 cert/*.pem
+log/

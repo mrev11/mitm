@@ -17,17 +17,27 @@ class mitm(object)
 
 ***************************************************************************************
 static function mitm.initialize(this,sck)
+local id
 
     this:brwsck:=socketNew(sck)  //socket fd -> object
     this:request:=http_readmessage(this:brwsck,10000) //elso request
 
-//    if( !a"localhost" $ this:request )
-//        //TESZTELESHEZ IDEIGLENESEN
-//        //az ff azonnal elkezd toltogetni (akadalyozza a tesztet)
-//        //egyelore minden ilyen toltogetest azonnal csendben eldobunk
-//        quit
-//    end  
+    if( this:request==NIL )
+        //neha a browser egyszeruen bont
+        quit
+    end
 
+    if( prohibited_site(this:request) )
+        //nem jo azonnal kilepni
+        //mert azonnal ujra probalkozik
+        sleep(10000)
+        quit
+    end
+
+    dirmake("log")
+    id:=date()::dtos+"-"+time()+"-"+getpid()::str::alltrim
+    set alternate to "log/log-"+id::strtran(":","-")
+    set alternate on
 
     ? "==========================================="
     ? "FIRST request", time(), sck
@@ -38,6 +48,10 @@ static function mitm.initialize(this,sck)
         connect_http(this) //HTTP
         //this:request bennehagyva
 
+    elseif( this:request[1..5]==a"POST " )
+        connect_http(this) //HTTP
+        //this:request bennehagyva
+
     elseif( this:request[1..8]==a"CONNECT " )
         connect_https(this) //HTTPS
         this:request:=NIL
@@ -45,12 +59,11 @@ static function mitm.initialize(this,sck)
 
     else
 
-    ? "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        ? "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         ? "Not implemented"
-        ? this:request
+        ? "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         quit
     end
-
 
     return this
     
@@ -68,17 +81,18 @@ local host:=http_getheader(this:request, "Host")
     
     this:host:=host
 
-    this:srvsck:=socketNew()
-    this:srvsck:connect(host[1],host[2])
-
     ? "==========================================="
-    ? "HTTP connected to:", this:host
+    ? "HTTP connect to:", this:host
+
+    this:srvsck:=socketNew()
+    ?? this:srvsck:connect(host[1],host[2])
+
 
 
 ***************************************************************************************
 static function connect_https(this)
 
-local srvctx,clnctx,host,pem
+local srvctx,clnctx,host,pem,err
 
     //kapcsolodas a szerverhez
     //a browser helyett konnektalunk a szerverbe
@@ -94,17 +108,18 @@ local srvctx,clnctx,host,pem
     host[2]::=val
     this:host:=host
 
-    this:srvsck:=socketNew()
-    this:srvsck:connect(host[1],host[2])
-    
-    srvctx:=sslctxNew() 
-    this:srvsck:=sslconConnect(srvctx,this:srvsck)   // socket -> sslcon
-
-
-
     ? "==========================================="
-    ? "HTTPS connected to:", this:host
+    ? "HTTPS connect to:", this:host
 
+    begin    
+        srvctx:=sslctxNew("TLS_client") 
+        this:srvsck:=sslconNew(srvctx)
+        ?? this:srvsck:connect(host[1],host[2])
+    recover err <sslerror>
+        ? "SSLCONCONNECT failed", err:description
+        quit
+    end    
+    
 
     //kapcsolodas a browserhez
     //a plain socketen jelezzuk, hogy megvan a kapcsolat a szerverhez
@@ -118,19 +133,23 @@ local srvctx,clnctx,host,pem
     //profibb megoldas (2): a client helloban levo SNI kiterjesztesbol
 
 
-    this:brwsck:send(a"200 connected"+x"0d0a0d0a")  //kapcsolat megvan
+    this:brwsck:send(a"200 connected"+x"0d0a0d0a")  //felel: a kapcsolat megvan
 
     //generalunk egy host[1] nevre szolo tanusitvanyt,
-    //ami ala van irva a comfirm.hu-val,
-    //ami installalva van a browseer authorities tabjaban
+    //ami ala van irva a CN=mitm nevre szolo kulccsal
+    //(ami installalva van a browseer authorities tabjaban)
     
     pem:=gencert(host[1]::bin2str)
-    
-    clnctx:=sslctxNew("TLS_server") 
-    clnctx:use_certificate_file(pem)
-    clnctx:use_privatekey_file(pem)
-    this:brwsck:=sslconAccept(clnctx,this:brwsck)  //socket -> sslcon
-    
+
+    begin    
+        clnctx:=sslctxNew("TLS_server") 
+        clnctx:use_certificate_file(pem)
+        clnctx:use_privatekey_file(pem)
+        this:brwsck:=sslconAccept(clnctx,this:brwsck)  //socket -> sslcon
+    recover err <sslerror>
+        ? "SSLCONACCEPT failed", err:description
+        quit
+    end    
 
 
 ***************************************************************************************
@@ -164,7 +183,7 @@ local sel,n,continue:=.t.
                 end
 
                 if( sel[n]==this:srvsck )
-                   this:response:=http_readmessage(this:srvsck,1000)
+                   this:response:=http_readmessage(this:srvsck,1000)   //chunked?
                    if( this:response==NIL )
                         continue:=.f. //megszakadt a kapcsolat
                         exit
@@ -182,7 +201,7 @@ local sel,n,continue:=.t.
     end       
 
     ? "==========================================="
-    ? "DISCONNECTED"
+    ? "DISCONNECTED ", this:host[1]
     ?
 
 
@@ -203,12 +222,10 @@ local pos,req
     end
     
     this:srvsck:send(req)
-    this:request:=NIL
 
     ? "..........................................."
-    ? "FORWARDED to server"
+    ? "FORWARDED to server >>",this:host[1]
     ? req
-
 
 
 ***************************************************************************************
@@ -216,8 +233,8 @@ static function forward_to_browser(this)
     this:brwsck:send(this:response)
 
     ? "..........................................."
-    ? "FORWARDED to browser"
-    ? this:response::http_header
+    ? "FORWARDED to browser <<",this:host[1]
+    ? this:response::http_header,x"0d0a0d0a"
 
 
 ***************************************************************************************

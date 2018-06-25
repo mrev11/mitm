@@ -1,0 +1,10 @@
+#!/bin/bash
+
+#SERVER=links.services.disqus.com
+SERVER=c.disquscdn.com 
+
+
+openssl s_client \
+    -servername  $SERVER \
+    -verify      1 \
+    -connect     $SERVER:443

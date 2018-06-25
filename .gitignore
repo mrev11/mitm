@@ -26,5 +26,8 @@ commit-message
 g-*
 /*.savex
 
+
 cert/*.pem
 log/
+sites-visited
+sites-refused

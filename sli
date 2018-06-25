@@ -18,7 +18,7 @@ export OREF_SIZE=200000
 export CCCTERM_SIZE=120x40
 
 export TEMP=~/.temp
-export GREP='grep --text -H -n'
+export GREP='grep --text -i -H -n'
 export FIND='savex.exe . -y -f -lilog-* -r.ppo. -lrobj* -lr*.nopack'
 
 

@@ -71,22 +71,31 @@ local id
 ***************************************************************************************
 static function connect_http(this)
 
-local host:=http_getheader(this:request, "Host")
+local err
+
+//local host:=http_getheader(this:request, "Host")
+//inkabb innen:
+local pos1:=at(a'://',this:request)
+local pos2:=at(a'/',this:request,pos1+3)
+local host:=this:request[pos1+3..pos2-1]
 
     host::=split(":")
     if( len(host)<2 )
         aadd(host,a"80")
     end
     host[2]:=val(host[2])
-    
     this:host:=host
 
     ? "==========================================="
     ? "HTTP connect to:", this:host
 
-    this:srvsck:=socketNew()
-    ?? this:srvsck:connect(host[1],host[2])
-
+    begin
+        this:srvsck:=socketNew()
+        ?? this:srvsck:connect(host[1],host[2])
+    recover err <socketerror>
+        ? "SOCKET CONNECT failed", err:description
+        quit
+    end
 
 
 ***************************************************************************************
@@ -116,7 +125,7 @@ local srvctx,clnctx,host,pem,err
         this:srvsck:=sslconNew(srvctx)
         ?? this:srvsck:connect(host[1],host[2])
     recover err <sslerror>
-        ? "SSLCONCONNECT failed", err:description
+        ? "SSLCON CONNECT failed", err:description
         quit
     end    
     
@@ -147,7 +156,7 @@ local srvctx,clnctx,host,pem,err
         clnctx:use_privatekey_file(pem)
         this:brwsck:=sslconAccept(clnctx,this:brwsck)  //socket -> sslcon
     recover err <sslerror>
-        ? "SSLCONACCEPT failed", err:description
+        ? "SSLCON ACCEPT failed", err:description
         quit
     end    
 
@@ -159,37 +168,41 @@ local sel,n,continue:=.t.
 
     while( continue )
 
-        if( this:request!=NIL )
-            //van beolvasott request
-            forward_to_server(this)
-            this:request:=NIL    
-
-        elseif( this:response!=NIL )
+        if( this:response!=NIL )
             //van beolvasott response
             forward_to_browser(this)    
             this:response:=NIL
 
+        elseif( this:request!=NIL )
+            //van beolvasott request
+            forward_to_server(this)
+            this:request:=NIL    
+
         else
             select(sel:={this:brwsck,this:srvsck})
-            
+            ? "SELECT:"
+
             for n:=1 to len(sel)
-
-                if( sel[n]==this:brwsck )
-                   this:request:=http_readmessage(this:brwsck,1000)
-                   if( this:request==NIL )
-                        continue:=.f. //megszakadt a kapcsolat
-                        exit
-                   end
-                end
-
                 if( sel[n]==this:srvsck )
-                   this:response:=http_readmessage(this:srvsck,1000)   //chunked?
-                   if( this:response==NIL )
+                    ?? "S"
+                    this:response:=http_readmessage(this:srvsck,10000)   //chunked?
+                    if( this:response==NIL )
+                        ?? "!"
                         continue:=.f. //megszakadt a kapcsolat
                         exit
-                   end
+                    end
+
+                elseif( sel[n]==this:brwsck )
+                    ?? "B"
+                    this:request:=http_readmessage(this:brwsck,10000)
+                    if( this:request==NIL )
+                        ?? "!"
+                        continue:=.f. //megszakadt a kapcsolat
+                        exit
+                    end
                 end
             next
+
         end
     end
     
@@ -201,7 +214,7 @@ local sel,n,continue:=.t.
     end       
 
     ? "==========================================="
-    ? "DISCONNECTED ", this:host[1]
+    ? "DISCONNECTED ", this:host[1], time()
     ?
 
 
@@ -211,29 +224,35 @@ static function forward_to_server(this)
 // HTTP request:    GET http://host/xxxxxx ....
 // HTTPS request:   GET /xxxxxx ....
 
-local pos,req
+local pos,req,nbyte
 
     if( a"GET http://" $ this:request )
         //abszolut url-t kihagyni
         pos:=at(a"/", this:request, 12 )
         req:=a"GET "+this:request[pos..]
+
+    elseif( a"POST http://" $ this:request )
+        //abszolut url-t kihagyni
+        pos:=at(a"/", this:request, 13 )
+        req:=a"POST "+this:request[pos..]
+
     else
         req:=this:request
     end
     
-    this:srvsck:send(req)
+    nbyte:=this:srvsck:send(req)
 
     ? "..........................................."
-    ? "FORWARDED to server >>",this:host[1]
+    ? "FORWARDED browser > proxy >>",this:host[1],nbyte
     ? req
 
 
 ***************************************************************************************
 static function forward_to_browser(this)
-    this:brwsck:send(this:response)
+local nbyte:=this:brwsck:send(this:response)
 
     ? "..........................................."
-    ? "FORWARDED to browser <<",this:host[1]
+    ? "FORWARDED browser << proxy <",this:host[1], nbyte
     ? this:response::http_header,x"0d0a0d0a"
 
 

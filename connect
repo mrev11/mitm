@@ -1,7 +1,8 @@
 #!/bin/bash
 
 #SERVER=links.services.disqus.com
-SERVER=c.disquscdn.com 
+#SERVER=c.disquscdn.com 
+SERVER=www.linkedin.com
 
 
 openssl s_client \

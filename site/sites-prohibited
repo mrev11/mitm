@@ -7,6 +7,9 @@ blocklists.settings.services.mozilla.com:443
 firefox.settings.services.mozilla.com:443
 aus5.mozilla.org:443
 shavar.services.mozilla.com:443
+versioncheck-bg.addons.mozilla.org:443
+services.addons.mozilla.org:443
+activity-stream-icons.services.mozilla.com:443
 
 detectportal.firefox.com
 detectportal.firefox.com:443
@@ -29,6 +32,7 @@ embedr.flickr.com:443
 cdn.embedly.com:443
 4cdn.hu:443
 api-cdn.embed.ly:443
+cdn.polyfill.io:443
 
 
 
@@ -51,4 +55,6 @@ log.pinterest.com:443
 realtime.services.disqus.com:443
 links.services.disqus.com:443
 proxy.strossle.it
+cdn.embedly.com
+api-cdn.embed.ly
 

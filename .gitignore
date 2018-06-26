@@ -27,7 +27,7 @@ g-*
 /*.savex
 
 
-cert/*.pem
+cert/
 log/
 sites-visited
 sites-refused

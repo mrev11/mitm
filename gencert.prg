@@ -11,6 +11,8 @@ local pemfile:=certdir+"/"+host+".pem"  //ezt kell elkesziteni
 static script:=<<SCRIPT>>#!/bin/bash
 
 NAME=$1
+UNIQ=$2
+
 DAYS=1000
 
 SITE_CA=../site/mitm.pem
@@ -21,7 +23,7 @@ SITE_SRL=../site/serial.srl
 # make config file
 ##############################################################################
 
-cat >config-$NAME <<-EOF
+cat >config-$NAME$UNIQ <<-EOF
 
 [req]
 default_bits = 2048
@@ -54,11 +56,11 @@ EOF
 
 openssl req\
     -new\
-    -out $NAME-req.pem\
+    -out $NAME$UNIQ-req.pem\
     -newkey rsa:2048\
-    -keyout $NAME-key.pem\
+    -keyout $NAME$UNIQ-key.pem\
     -nodes\
-    -config config-$NAME
+    -config config-$NAME$UNIQ
 
 
 ##############################################################################
@@ -66,14 +68,14 @@ openssl req\
 ##############################################################################
 
 openssl x509 -req\
-    -in $NAME-req.pem\
-    -out $NAME-cert.pem\
+    -in $NAME$UNIQ-req.pem\
+    -out $NAME$UNIQ-cert.pem\
     -days $DAYS\
     -CA $SITE_CA\
     -CAkey $SITE_CA\
     -CAserial $SITE_SRL\
     -CAcreateserial\
-    -extfile config-$NAME\
+    -extfile config-$NAME$UNIQ\
     -extensions req_ext
 
 
@@ -81,14 +83,15 @@ openssl x509 -req\
 # concatenate all results
 ##############################################################################
 
-cat $NAME-cert.pem  >>$NAME-key.pem
-rm  $NAME-cert.pem
-rm  $NAME-req.pem
-rm  config-$NAME
-mv  $NAME-key.pem   $NAME.pem
-
+cat $NAME$UNIQ-cert.pem  >>$NAME$UNIQ-key.pem
+rm  $NAME$UNIQ-cert.pem
+rm  $NAME$UNIQ-req.pem
+rm  config-$NAME$UNIQ
+mv  $NAME$UNIQ-key.pem   $NAME.pem
 
 ##############################################################################
+
+
 <<SCRIPT>>
 
 local cmd
@@ -100,9 +103,10 @@ local cmd
     end
 
     if( !file(pemfile) )
-        cmd:="cd CERTDIR; mkcert HOST; cd CURDIR"
+        cmd:="cd CERTDIR; mkcert HOST PID; cd CURDIR"
         cmd::=strtran("CERTDIR",certdir)
         cmd::=strtran("HOST",host)
+        cmd::=strtran("PID","-"+getpid()::str::alltrim)
         cmd::=strtran("CURDIR",curdir)
         run( cmd )
         ? "GENERATED", pemfile

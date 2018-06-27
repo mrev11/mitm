@@ -1,3 +1,10 @@
+2018.06.26 javitas a HTTP requestek kezeleseben:
+  Letezo browser<->proxy kapcsolaton belul a browse atterhet masik website-ra.
+  Ezt eszre kell venni es ujra konnektalni. Valojaban a (proxy) HTTP requestekben 
+  mindig abszolut URL jon, figyelni kell, hogy a host mikor valtozik. Ha nem
+  valtozik hasznalhato a korabbi proxy<->szerver kapcsolat, ha valtozik, akkor 
+  pedig konnektalni kell az uj hosthoz.
+
 2018.06.26 cert gyartaskor egyedi fajlnevek
 
 2018.06.25 egyszerubb oldalakat mar lehet olvasgatni

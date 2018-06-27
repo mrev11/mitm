@@ -30,8 +30,13 @@ local id
     if( prohibited_site(this:request) )
         //nem jo azonnal kilepni
         //mert azonnal ujra probalkozik
-        sleep(10000)
+        sleep(2000)
         quit
+
+        //inkabb (de megse):
+        //this:brwsck:send(a"403 Forbidden"+x"0d0a0d0a")
+        //this:brwsck:send(a"404 Not Found"+x"0d0a0d0a")
+        //quit
     end
 
     dirmake("log")
@@ -72,18 +77,27 @@ local id
 static function connect_http(this)
 
 local err
-
-//local host:=http_getheader(this:request, "Host")
-//inkabb innen:
-local pos1:=at(a'://',this:request)
-local pos2:=at(a'/',this:request,pos1+3)
-local host:=this:request[pos1+3..pos2-1]
+local pos1:=at(a'http://',this:request)
+local pos2:=at(a'/',this:request,pos1+7)
+local host:=this:request[pos1+7..pos2-1]
 
     host::=split(":")
     if( len(host)<2 )
         aadd(host,a"80")
     end
     host[2]:=val(host[2])
+
+    this:request:=this:request[1..pos1-1]+this:request[pos2..]
+
+    if( this:srvsck!=NIL )
+        if( this:host[1]==host[1] .and. this:host[2]==host[2] )
+            ?? " reuse existing connection to", this:host
+            return NIL
+        else
+            this:srvsck:close
+        end
+    end
+
     this:host:=host
 
     ? "==========================================="
@@ -93,7 +107,7 @@ local host:=this:request[pos1+3..pos2-1]
         this:srvsck:=socketNew()
         ?? this:srvsck:connect(host[1],host[2])
     recover err <socketerror>
-        ? "SOCKET CONNECT failed", err:description
+        ? "SOCKET CONNECT failed", host[1], err:description
         quit
     end
 
@@ -125,7 +139,7 @@ local srvctx,clnctx,host,pem,err
         this:srvsck:=sslconNew(srvctx)
         ?? this:srvsck:connect(host[1],host[2])
     recover err <sslerror>
-        ? "SSLCON CONNECT failed", err:description
+        ? "SSLCON CONNECT failed", host[1], err:description
         quit
     end    
     
@@ -134,7 +148,7 @@ local srvctx,clnctx,host,pem,err
     //a plain socketen jelezzuk, hogy megvan a kapcsolat a szerverhez
     //a browser client hello-t kuld, ezt NEM kuldjuk tovabb a szevernek
     //hanem ugy teszunk, mintha mi volnank a szerver:
-    //ropteben keszitunk egy olyan tanusutvanyt, amit a browser elfogad
+    //ropteben keszitunk egy olyan tanusitvanyt, amit a browser elfogad
     //a tanusitvanyban szerepel a szerver neve, ezt a browse ellenorzi
     //a szerver nevet korulmenyes megszerezni, mi egyszeruen
     //az url-bol kiolvasott szerver nevet hasznaljuk (ami nem mindig jo)
@@ -156,7 +170,7 @@ local srvctx,clnctx,host,pem,err
         clnctx:use_privatekey_file(pem)
         this:brwsck:=sslconAccept(clnctx,this:brwsck)  //socket -> sslcon
     recover err <sslerror>
-        ? "SSLCON ACCEPT failed", err:description
+        ? "SSLCON ACCEPT failed", host[1], err:description
         quit
     end    
 
@@ -164,7 +178,7 @@ local srvctx,clnctx,host,pem,err
 ***************************************************************************************
 static function mitm.loop(this)
 
-local sel,n,continue:=.t.
+local pos,sel,n,continue:=.t.
 
     while( continue )
 
@@ -175,6 +189,15 @@ local sel,n,continue:=.t.
 
         elseif( this:request!=NIL )
             //van beolvasott request
+
+            //a browser a meglevo TCP kapcsolat bontasa nelkul
+            //olyan requestet is kuldhet, amiben abszolut URL van
+            //ilyenkor konnektalni kell a megadott (uj) URL-hez
+            pos:=at(a"http://",this:request)
+            if( 0<pos .and. pos<10 )
+                connect_http(this)
+            end
+
             forward_to_server(this)
             this:request:=NIL    
 

@@ -2,7 +2,9 @@
 
 #SERVER=links.services.disqus.com
 #SERVER=c.disquscdn.com 
-SERVER=www.linkedin.com
+#SERVER=www.linkedin.com
+
+SERVER=wikiszotar.hu
 
 
 openssl s_client \

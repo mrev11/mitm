@@ -1,17 +1,19 @@
 
 #include "fileio.ch"
 
-#define VISITED     "sites-visited"
-#define PROHIBITED  "sites-prohibited"
-#define REFUSED     "sites-refused"
+#define VISITED     "sites-visited"          //meglatogatott site-ok
+#define VISITED1    "sites-visited1"         //meglatogatott site-ok (mindegyik csak egyszer)
+#define PROHIBITED  "sites-prohibited"       //tiltott site-ok
+#define REFUSED     "sites-refused"          //tiltas miatt elutasitott site-ok
 
 
 **********************************************************************************************
 function prohibited_site(req)
 
 static fdvisited:=fopen(VISITED,FO_READWRITE+FO_CREATE+FO_APPEND)
+static fdvisited1:=fopen(VISITED1,FO_READWRITE+FO_CREATE+FO_APPEND)
 static fdrefused:=fopen(REFUSED,FO_READWRITE+FO_CREATE+FO_APPEND)
-static hash_visited:=loadhash(VISITED)
+static hash_visited1:=loadhash(VISITED1)
 static hash_prohibited:=loadhash(PROHIBITED)
 local host
 
@@ -35,11 +37,14 @@ local host
         return .t.
     end
     
-    if( empty(hash_visited[host]) )
-        fwrite(fdvisited,host)
-        fwrite(fdvisited,x"0a")
-        hash_visited[host]:=.t.
+    if( empty(hash_visited1[host]) )
+        fwrite(fdvisited1,host)
+        fwrite(fdvisited1,x"0a")
+        hash_visited1[host]:=.t.
     end
+
+    fwrite(fdvisited,host)
+    fwrite(fdvisited,x"0a")
     
     return .f.
 

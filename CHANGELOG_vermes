@@ -1,3 +1,9 @@
+2018.06.28 javitgatasok:
+  gencert alternativ nevek kepzese: x.y.z.com -> x.y.z.com, y.z.com, z.com
+  site-visited: lista a meglatogatott site-okrol (minden konnekt kulon sor)
+  site-visited1: lista a meglatogatott site-okrol (egy site csak egyszer)
+
+
 2018.06.28 atteres a http_reader objektumra:
   A http_reader:read mindent kiolvas (recvall) a socketbol egy bufferbe.
   A http_reader:next megnezi, hogy van-e mar eleg adat a bufferben, 

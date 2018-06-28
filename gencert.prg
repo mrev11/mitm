@@ -43,11 +43,15 @@ CN = $NAME
 subjectAltName = @alt_names
 
 [ alt_names ]
-DNS.0 = localhost
-DNS.1 = $NAME
-DNS.2 = www.$NAME
-
 EOF
+
+cnt=0
+for ARG in "$@"; do
+    if [ $ARG != $UNIQ ]; then
+        echo DNS.$cnt = $ARG >>config-$NAME$UNIQ
+        cnt=$((cnt+1))
+    fi
+done
 
 
 ##############################################################################
@@ -95,6 +99,7 @@ mv  $NAME$UNIQ-key.pem   $NAME.pem
 <<SCRIPT>>
 
 local cmd
+local alt,n
 
     if( !file(mkcert) )
         dirmake(certdir)
@@ -103,11 +108,20 @@ local cmd
     end
 
     if( !file(pemfile) )
-        cmd:="cd CERTDIR; mkcert HOST PID; cd CURDIR"
+        cmd:="cd CERTDIR; mkcert HOST PID ALTNAMES; cd CURDIR"
         cmd::=strtran("CERTDIR",certdir)
         cmd::=strtran("HOST",host)
         cmd::=strtran("PID","-"+getpid()::str::alltrim)
         cmd::=strtran("CURDIR",curdir)
+
+        host::=split(".")
+        alt:=host::atail
+        for n:=len(host)-1 to 2 step -1
+            alt:=host[n]+"."+alt
+            cmd::=strtran("ALTNAMES","ALTNAMES "+alt)
+        next
+        cmd::=strtran("ALTNAMES","")
+
         run( cmd )
         ? "GENERATED", pemfile
         ?

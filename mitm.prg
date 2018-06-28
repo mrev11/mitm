@@ -90,7 +90,7 @@ local host:=this:request[pos1+7..pos2-1]
 
     if( this:srvsck!=NIL )
         if( this:host[1]==host[1] .and. this:host[2]==host[2] )
-            ?? " reuse existing connection to", this:host
+            ? "REUSE existing connection to", this:host
             return NIL
         else
             this:srvsck:close
@@ -112,10 +112,19 @@ local host:=this:request[pos1+7..pos2-1]
 
     if( this:brwreader==NIL )
         this:brwreader:=http_readerNew(this:brwsck,"brw")
-        this:brwreader:buffer:=this:request //!
-    end    
-    this:srvreader:=http_readerNew(this:srvsck,"srv")
+        this:brwreader:buffer:=this:request
 
+        //Az elso requestet nem a http_reader:read
+        //hanem a http_readmessage() olvasva.
+        //A requestet bele kell rakni a bufferbe,
+        //hogy onnan a http_reader:next elovehesse.
+        
+        //A kesobbi requestek nem erintik a brwreader-t,
+        //ui. ha a browser megszakitja a kapcsolatot,
+        //akkor a session vegeter.
+    end    
+
+    this:srvreader:=http_readerNew(this:srvsck,"srv")
 
 
 ***************************************************************************************

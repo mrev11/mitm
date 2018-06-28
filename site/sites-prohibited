@@ -14,6 +14,19 @@ activity-stream-icons.services.mozilla.com:443
 detectportal.firefox.com
 detectportal.firefox.com:443
 
+www.gnome.org
+www.gnome.org:443
+projects.gnome.org
+projects.gnome.org:443
+wiki.gnome.org
+wiki.gnome.org:443
+static.gnome.org
+static.gnome.org:443
+developer.gnome.org
+developer.gnome.org:443
+
+
+
 cdn.playbuzz.com:443
 embed.playbuzz.com:443
 

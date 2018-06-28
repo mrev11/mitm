@@ -1,15 +1,12 @@
                           
-#include "http_reader.ch"
 
 ***************************************************************************************
 class mitm(object)
 
     attrib  brwsck
-    attrib  brwreader
-    attrib  request
-
     attrib  srvsck
-    attrib  srvreader
+
+    attrib  request
     attrib  response
 
     attrib  host
@@ -54,12 +51,16 @@ local id
 
     if( this:request[1..4]==a"GET " )
         connect_http(this) //HTTP
+        //this:request bennehagyva
 
     elseif( this:request[1..5]==a"POST " )
         connect_http(this) //HTTP
+        //this:request bennehagyva
 
     elseif( this:request[1..8]==a"CONNECT " )
         connect_https(this) //HTTPS
+        this:request:=NIL
+        //this:request eldobva
 
     else
 
@@ -109,13 +110,6 @@ local host:=this:request[pos1+7..pos2-1]
         ? "SOCKET CONNECT failed", host[1], err:description
         quit
     end
-
-    if( this:brwreader==NIL )
-        this:brwreader:=http_readerNew(this:brwsck,"brw")
-        this:brwreader:buffer:=this:request //!
-    end    
-    this:srvreader:=http_readerNew(this:srvsck,"srv")
-
 
 
 ***************************************************************************************
@@ -180,36 +174,32 @@ local srvctx,clnctx,host,pem,err
         quit
     end    
 
-    this:brwreader:=http_readerNew(this:brwsck,"brw")
-    this:srvreader:=http_readerNew(this:srvsck,"srv")
-
 
 ***************************************************************************************
 static function mitm.loop(this)
 
-local pos,sel,n
-local status
-local continue:=.t.
+local pos,sel,n,continue:=.t.
 
-    while(.t.)
+    while( continue )
 
-        if( (this:response:=this:srvreader:next(@status))!=NIL )
-            forward_to_browser(this,status)    
+        if( this:response!=NIL )
+            //van beolvasott response
+            forward_to_browser(this)    
+            this:response:=NIL
 
-        elseif( (this:request:=this:brwreader:next(@status))!=NIL )
-            if( status==STATUS_HEADER )
-                //a browser a meglevo TCP kapcsolat bontasa nelkul
-                //olyan requestet is kuldhet, amiben abszolut URL van
-                //ilyenkor konnektalni kell a megadott (uj) URL-hez
-                pos:=at(a"http://",this:request)
-                if( 0<pos .and. pos<10 )
-                    connect_http(this)
-                end
+        elseif( this:request!=NIL )
+            //van beolvasott request
+
+            //a browser a meglevo TCP kapcsolat bontasa nelkul
+            //olyan requestet is kuldhet, amiben abszolut URL van
+            //ilyenkor konnektalni kell a megadott (uj) URL-hez
+            pos:=at(a"http://",this:request)
+            if( 0<pos .and. pos<10 )
+                connect_http(this)
             end
-            forward_to_server(this,status)
 
-        elseif( !continue )
-            exit
+            forward_to_server(this)
+            this:request:=NIL    
 
         else
             select(sel:={this:brwsck,this:srvsck})
@@ -218,15 +208,20 @@ local continue:=.t.
             for n:=1 to len(sel)
                 if( sel[n]==this:srvsck )
                     ?? "S"
-                    if( !this:srvreader:read )
+                    this:response:=http_readmessage(this:srvsck,10000)   //chunked?
+                    if( this:response==NIL )
                         ?? "!"
-                        continue:=.f.  //megszakadt a kapcsolat
+                        continue:=.f. //megszakadt a kapcsolat
+                        exit
                     end
+
                 elseif( sel[n]==this:brwsck )
                     ?? "B"
-                    if( !this:brwreader:read )
+                    this:request:=http_readmessage(this:brwsck,10000)
+                    if( this:request==NIL )
                         ?? "!"
-                        continue:=.f.  //megszakadt a kapcsolat
+                        continue:=.f. //megszakadt a kapcsolat
+                        exit
                     end
                 end
             next
@@ -243,45 +238,45 @@ local continue:=.t.
 
     ? "==========================================="
     ? "DISCONNECTED ", this:host[1], time()
-    ?; this:srvreader:printstate
-    ?; this:brwreader:printstate
     ?
 
 
 ***************************************************************************************
-static function forward_to_server(this,status)
-local nbyte:=this:srvsck:send(this:request)
-    if( status==STATUS_HEADER )
-        ? "..........................................."
-        ? "FORWARDED header to server",this:host[1], nbyte
-        ? this:request
-    elseif( status==STATUS_BODY )
-        ? "..........................................."
-        ? "forwarded body to server", this:host[1], nbyte
-        ?
-    elseif( status==STATUS_CHUNK )
-        ? "..........................................."
-        ? "forwarded chunk to server", this:host[1], nbyte
-        ?
+static function forward_to_server(this)
+
+// HTTP request:    GET http://host/xxxxxx ....
+// HTTPS request:   GET /xxxxxx ....
+
+local pos,req,nbyte
+
+    if( a"GET http://" $ this:request )
+        //abszolut url-t kihagyni
+        pos:=at(a"/", this:request, 12 )
+        req:=a"GET "+this:request[pos..]
+
+    elseif( a"POST http://" $ this:request )
+        //abszolut url-t kihagyni
+        pos:=at(a"/", this:request, 13 )
+        req:=a"POST "+this:request[pos..]
+
+    else
+        req:=this:request
     end
+    
+    nbyte:=this:srvsck:send(req)
+
+    ? "..........................................."
+    ? "FORWARDED browser > proxy >>",this:host[1],nbyte
+    ? req
 
 
 ***************************************************************************************
-static function forward_to_browser(this,status)
+static function forward_to_browser(this)
 local nbyte:=this:brwsck:send(this:response)
-    if( status==STATUS_HEADER )
-        ? "..........................................."
-        ? "FORWARDED header to browser",this:host[1], nbyte
-        ? this:response
-    elseif( status==STATUS_BODY )
-        ? "..........................................."
-        ? "forwarded body to browser", this:host[1], nbyte
-        ?
-    elseif( status==STATUS_CHUNK )
-        ? "..........................................."
-        ? "forwarded chunk to browser", this:host[1], nbyte
-        ?
-    end
+
+    ? "..........................................."
+    ? "FORWARDED browser << proxy <",this:host[1], nbyte
+    ? this:response::http_header,x"0d0a0d0a"
 
 
 ***************************************************************************************

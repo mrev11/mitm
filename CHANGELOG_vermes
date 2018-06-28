@@ -1,3 +1,9 @@
+2018.06.28 atteres a http_reader objektumra:
+  A http_reader:read mindent kiolvas (recvall) a socketbol egy bufferbe.
+  A http_reader:next megnezi, hogy van-e mar eleg adat a bufferben, 
+  hogy a HTTP message soron kovetkezo komponenset (header,body,chunk) elkeszitse.
+  Ha van, akkor visszaadja a komponenst, ha nincs akkor tovabb kell varni/olvasni.
+
 2018.06.26 javitas a HTTP requestek kezeleseben:
   Letezo browser<->proxy kapcsolaton belul a browse atterhet masik website-ra.
   Ezt eszre kell venni es ujra konnektalni. Valojaban a (proxy) HTTP requestekben 

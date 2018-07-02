@@ -1,3 +1,5 @@
+2018.07.02: szerver hitelesites;
+
 2018.06.28 javitgatasok:
   gencert alternativ nevek kepzese: x.y.z.com -> x.y.z.com, y.z.com, z.com
   site-visited: lista a meglatogatott site-okrol (minden konnekt kulon sor)

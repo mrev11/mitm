@@ -1,4 +1,5 @@
                           
+#include "ssl.ch"
 #include "http_reader.ch"
 
 ***************************************************************************************
@@ -131,6 +132,8 @@ local host:=this:request[pos1+7..pos2-1]
 static function connect_https(this)
 
 local srvctx,clnctx,host,pem,err
+local cafile:="/etc/ssl/certs/ca-certificates.crt"
+local capath:="/etc/ssl/certs"
 
     //kapcsolodas a szerverhez
     //a browser helyett konnektalunk a szerverbe
@@ -150,7 +153,12 @@ local srvctx,clnctx,host,pem,err
     ? "HTTPS connect to:", this:host
 
     begin    
-        srvctx:=sslctxNew("TLS_client") 
+        //srvctx:=sslctxNew("TLS_client") 
+        srvctx:=sslctxNew() 
+        srvctx:set_verify(SSL_VERIFY_PEER_CERT)
+        //srvctx:set_verify_depth(15)
+        srvctx:load_verify_locations(cafile,capath)
+
         this:srvsck:=sslconNew(srvctx)
         ?? this:srvsck:connect(host[1],host[2])
     recover err <sslerror>

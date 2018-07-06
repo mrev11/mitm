@@ -14,11 +14,7 @@ static fdvisited:=fopen(VISITED,FO_READWRITE+FO_CREATE+FO_APPEND)
 static fdvisited1:=fopen(VISITED1,FO_READWRITE+FO_CREATE+FO_APPEND)
 static fdrefused:=fopen(REFUSED,FO_READWRITE+FO_CREATE+FO_APPEND)
 static hash_visited1:=loadhash(VISITED1)
-static hash_prohibited:=loadhash(PROHIBITED)
 local host
-
-    //hash_visited:list
-    //hash_prohibited:list
 
     if( req[1..4]==a"GET " )
         host:=http_getheader(req,"Host")
@@ -30,8 +26,9 @@ local host
         return .f.  //ismeretlen tipusu request
     end
 
-    if( !empty(hash_prohibited[host]) )
-        fwrite(fdrefused,date()::dtos+"-"+time()+":")
+    //if( !empty(hash_prohibited[host]) )
+    if( isprohibited(host) )
+        fwrite(fdrefused,date()::dtos+"-"+time()+": ")
         fwrite(fdrefused,host)
         fwrite(fdrefused,x"0a")
         return .t.
@@ -43,6 +40,7 @@ local host
         hash_visited1[host]:=.t.
     end
 
+    fwrite(fdvisited,date()::dtos+"-"+time()+": ")
     fwrite(fdvisited,host)
     fwrite(fdvisited,x"0a")
     
@@ -59,5 +57,21 @@ local hash:=simplehashNew(),n
         end
     next
     return hash
+
+
+**********************************************************************************************
+static function isprohibited(host)
+static hash_prohibited:=loadhash(PROHIBITED)
+local ahost:=split(host,a"."),n
+local xhost:=atail(ahost)
+
+    for n:=len(ahost)-1 to 1 step -1
+        xhost:=ahost[n]+a"."+xhost
+        if( hash_prohibited[xhost]!=NIL )
+            return .t.
+        end
+    next
+    return .f.
+
 
 **********************************************************************************************

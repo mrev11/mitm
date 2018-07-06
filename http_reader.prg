@@ -191,18 +191,18 @@ local pos:=at(crlf,this:buffer)
 
     return msg
 
-    // chunkok formátuma
+    // chunkok formatuma
     //
     // hhhhCRCRxxxxCRmmmmmmmmmmmmmmmmmCRxCRmmmmmmmCR0CRCR
     //         ^                        ^           ^
     //         start1                   start2      start-last
     // 
     // h  : header
-    // x  : a chunk hossza hexában
-    // CR : \r\n  (két bájt)
-    // m  : az üzenet tényleges tartalma (len(m)==x::bin2str::hex2l)
+    // x  : a chunk hossza hexaban
+    // CR : \r\n  (ket bajt)
+    // m  : az uzenet tenyleges tartalma (len(m)==x::bin2str::hex2l)
     //
-    // az utolsó chunk (tartalmának) hossza 0
+    // az utolso chunk (tartalmanak) hossza 0
 
 *************************************************************************************************
     

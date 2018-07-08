@@ -34,7 +34,7 @@ local id
     if( prohibited_site(this:request) )
         //nem jo azonnal kilepni
         //mert azonnal ujra probalkozik
-        sleep(2000)
+        //sleep(2000)
         quit
 
         //inkabb (de megse):
@@ -139,7 +139,7 @@ local capath:="/etc/ssl/certs"
     //a browser helyett konnektalunk a szerverbe
     //a browser ellenorizne a szerver hitelesseget
     //mi itt csak kapcsolodunk, nem ellenorzunk 
-
+    //VALTOZAS: beepitve az ellenorzes
 
     //peldaul: CONNECT localhost:443 HTTP/1.1
     host:=this:request::split(a" ")[2]::split(a":")
@@ -172,7 +172,7 @@ local capath:="/etc/ssl/certs"
     //a browser client hello-t kuld, ezt NEM kuldjuk tovabb a szevernek
     //hanem ugy teszunk, mintha mi volnank a szerver:
     //ropteben keszitunk egy olyan tanusitvanyt, amit a browser elfogad
-    //a tanusitvanyban szerepel a szerver neve, ezt a browse ellenorzi
+    //a tanusitvanyban szerepel a szerver neve, ezt a browser ellenorzi
     //a szerver nevet korulmenyes megszerezni, mi egyszeruen
     //az url-bol kiolvasott szerver nevet hasznaljuk (ami nem mindig jo)
     //profibb megoldas (1): a szerver tanusitvanyabol is ki lehetne olvasni
@@ -183,7 +183,7 @@ local capath:="/etc/ssl/certs"
 
     //generalunk egy host[1] nevre szolo tanusitvanyt,
     //ami ala van irva a CN=mitm nevre szolo kulccsal
-    //(ami installalva van a browseer authorities tabjaban)
+    //(ami installalva van a browser authorities tabjaban)
     
     pem:=gencert(host[1]::bin2str)
 

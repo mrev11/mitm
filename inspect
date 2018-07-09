@@ -1,2 +1,0 @@
-#!/bin/bash
-grep  --text $1  log/log-*  | less -S

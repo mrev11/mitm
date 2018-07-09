@@ -1,9 +1,17 @@
 disqus.com
 disqus.com:443
+
 google.com:443
+google.hu:443
+google-analytics.com:443
+googleapis.com:443
+googleadservices.com:443
+
+doubleclick.net:443
+gemius.pl:443
+
 youtube.com:443
 gstatic.com:443
-googleapis.com:443
 propeller.hu
 pinterest.com:443
 spklw.com
@@ -13,4 +21,8 @@ jwplayer.com:443
 jwpsrv.com
 jwpsrv.com:443
 
+twitter.com:443
+twimg.com:443
 
+facebook.net:443
+facebook.com:443

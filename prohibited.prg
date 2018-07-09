@@ -14,17 +14,7 @@ static fdvisited:=fopen(VISITED,FO_READWRITE+FO_CREATE+FO_APPEND)
 static fdvisited1:=fopen(VISITED1,FO_READWRITE+FO_CREATE+FO_APPEND)
 static fdrefused:=fopen(REFUSED,FO_READWRITE+FO_CREATE+FO_APPEND)
 static hash_visited1:=loadhash(VISITED1)
-local host
-
-    if( req[1..4]==a"GET " )
-        host:=http_getheader(req,"Host")
-    elseif( req[1..5]==a"POST " )
-        host:=http_getheader(req,"Host")
-    elseif( req[1..8]==a"CONNECT " )
-        host:=req::split(a" ")[2]
-    else
-        return .f.  //ismeretlen tipusu request
-    end
+local host:=request_to_hostport(req)
 
     //if( !empty(hash_prohibited[host]) )
     if( isprohibited(host) )
@@ -73,5 +63,17 @@ local xhost:=atail(ahost)
     next
     return .f.
 
+
+**********************************************************************************************
+static function request_to_hostport(request)
+local pos1,pos2
+    if( 1==at(a"CONNECT ",request) )
+        pos1:=9
+        pos2:=at(a' ',request,pos1+1)
+    else
+        pos1:=at(a'http://',request)+7
+        pos2:=at(a'/',request,pos1+1)
+    end
+    return request[pos1..pos2-1]
 
 **********************************************************************************************

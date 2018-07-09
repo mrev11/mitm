@@ -56,6 +56,9 @@ local id
     if( this:request[1..4]==a"GET " )
         connect_http(this) //HTTP
 
+    elseif( this:request[1..5]==a"HEAD " )
+        connect_http(this) //HTTP
+
     elseif( this:request[1..5]==a"POST " )
         connect_http(this) //HTTP
 
@@ -220,6 +223,9 @@ local continue:=.t.
                 //ilyenkor konnektalni kell a megadott (uj) URL-hez
                 pos:=at(a"http://",this:request)
                 if( 0<pos .and. pos<10 )
+                    if( prohibited_site(this:request) )
+                        quit
+                    end
                     connect_http(this)
                 end
             end

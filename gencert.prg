@@ -104,7 +104,7 @@ local alt,n
     if( !file(mkcert) )
         dirmake(certdir)
         memowrit(mkcert,script)
-        chmod(mkcert,0b111111101) /775
+        chmod(mkcert,0b111111101) // 775
     end
 
     if( !file(pemfile) )

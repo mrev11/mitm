@@ -179,7 +179,7 @@ local capath:="/etc/ssl/certs"
     //profibb megoldas (2): a client helloban levo SNI kiterjesztesbol
 
 
-    this:brwsck:send(a"200 connected"+x"0d0a0d0a")  //felel: a kapcsolat megvan
+    this:brwsck:send(a"HTTP/1.1 200 Connection established"+x"0d0a0d0a")  //felel: a kapcsolat megvan
 
     //generalunk egy host[1] nevre szolo tanusitvanyt,
     //ami ala van irva a CN=mitm nevre szolo kulccsal

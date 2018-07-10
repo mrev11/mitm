@@ -7,6 +7,8 @@ google-analytics.com:443
 googleapis.com:443
 googleadservices.com:443
 
+mozilla.org:443
+
 doubleclick.net:443
 gemius.pl:443
 
@@ -26,3 +28,9 @@ twimg.com:443
 
 facebook.net:443
 facebook.com:443
+
+
+polyfill.io:443
+embedly.com:443
+embed.ly:443
+4cdn.hu:443

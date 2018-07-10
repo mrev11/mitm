@@ -1,3 +1,11 @@
+2018.07.10 konnektek sorrendje felcserelve:
+  Jobb eloszor a browserhez kapcsolodni,
+  ui. a browser (FF) indit egy csomo connect-et,
+  amik kozul (az SSL handshake helyett/elott) sokat eldob.
+  Ilyen esetben azonnal dobhatjuk a sessiont, mielott meg
+  fogyasztottuk volna a mobilinternet egyenlegunket
+  a szerverhez valo hiabavalo konnektalassal.
+
 2018.07.09 javitgatas;
 
 2018.07.09 CONNECT-re adott valasz javitva

@@ -29,6 +29,7 @@ g-*
 
 cert/
 log/
+sites-prohibited
 sites-visited
 sites-visited1
 sites-refused

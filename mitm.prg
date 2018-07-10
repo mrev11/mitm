@@ -138,11 +138,6 @@ local srvctx,clnctx,host,pem,err
 local cafile:="/etc/ssl/certs/ca-certificates.crt"
 local capath:="/etc/ssl/certs"
 
-    //kapcsolodas a szerverhez
-    //a browser helyett konnektalunk a szerverbe
-    //a browser ellenorizne a szerver hitelesseget
-    //mi itt csak kapcsolodunk, nem ellenorzunk 
-    //VALTOZAS: beepitve az ellenorzes
 
     //peldaul: CONNECT localhost:443 HTTP/1.1
     host:=this:request::split(a" ")[2]::split(a":")
@@ -152,24 +147,20 @@ local capath:="/etc/ssl/certs"
     host[2]::=val
     this:host:=host
 
-    ? "==========================================="
-    ? "HTTPS connect to:", this:host
-
-    begin    
-        //srvctx:=sslctxNew("TLS_client") 
-        srvctx:=sslctxNew() 
-        srvctx:set_verify(SSL_VERIFY_PEER_CERT)
-        //srvctx:set_verify_depth(15)
-        srvctx:load_verify_locations(cafile,capath)
-
-        this:srvsck:=sslconNew(srvctx)
-        ?? this:srvsck:connect(host[1],host[2])
-    recover err <sslerror>
-        ? "SSLCON CONNECT failed", host[1], err:description
-        quit
-    end    
+    //MEGJEGYZES:
+    //
+    // Jobb eloszor a browserhez kapcsolodni,
+    // ui. a browser (FF) indit egy csomo connect-et,
+    // amik kozul (az SSL handshake helyett/elott) sokat eldob.
+    // Ilyen esetben azonnal dobhatjuk a sessiont, mielott meg
+    // fogyasztottuk volna a mobilinternet egyenlegunket
+    // a szerverhez valo hiabavalo konnektalassal.
+    //
+    //               eloszor                  masodszor
+    //browser  <--belso halozat-->  proxy  <--internet-->  szerver
     
-
+    
+    //eloszor
     //kapcsolodas a browserhez
     //a plain socketen jelezzuk, hogy megvan a kapcsolat a szerverhez
     //a browser client hello-t kuld, ezt NEM kuldjuk tovabb a szevernek
@@ -180,7 +171,6 @@ local capath:="/etc/ssl/certs"
     //az url-bol kiolvasott szerver nevet hasznaljuk (ami nem mindig jo)
     //profibb megoldas (1): a szerver tanusitvanyabol is ki lehetne olvasni
     //profibb megoldas (2): a client helloban levo SNI kiterjesztesbol
-
 
     this:brwsck:send(a"HTTP/1.1 200 Connection established"+x"0d0a0d0a")  //felel: a kapcsolat megvan
 
@@ -199,6 +189,32 @@ local capath:="/etc/ssl/certs"
         ? "SSLCON ACCEPT failed", host[1], err:description
         quit
     end    
+
+
+    //masodszer
+    //kapcsolodas a szerverhez
+    //a browser helyett konnektalunk a szerverbe
+    //a browser ellenorizne a szerver hitelesseget
+    //mi itt csak kapcsolodunk, nem ellenorzunk 
+    //VALTOZAS: beepitve az ellenorzes
+
+    ? "==========================================="
+    ? "HTTPS connect to:", this:host
+
+    begin    
+        srvctx:=sslctxNew() 
+        //srvctx:=sslctxNew("TLS_client") 
+        srvctx:set_verify(SSL_VERIFY_PEER_CERT)
+        //srvctx:set_verify_depth(15)
+        srvctx:load_verify_locations(cafile,capath)
+
+        this:srvsck:=sslconNew(srvctx)
+        ?? this:srvsck:connect(host[1],host[2])
+    recover err <socketerror>
+        ? "SSLCON CONNECT failed", host[1], err:description
+        quit
+    end    
+
 
     this:brwreader:=http_readerNew(this:brwsck,"brw")
     this:srvreader:=http_readerNew(this:srvsck,"srv")

@@ -1,3 +1,9 @@
+2018.07.12 plain/ssl kapcsolat felismerese javitva:
+  socket_lookahead() megadja a kovetkezo olvasassal kaphato bajtot;
+  CONNECT requestek kezelve plain es ssl esetben is;
+  websoceketek tamogatva plain esetben is;
+  README.md bovitve;
+
 2018.07.12 websocket tamogatas (egyelore csak SSL)
 
 2018.07.10 konnektek sorrendje felcserelve:

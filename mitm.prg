@@ -14,6 +14,7 @@ class mitm(object)
     attrib  response
 
     attrib  host
+    attrib  sslflag
     
     method  initialize
     method  loop
@@ -21,7 +22,7 @@ class mitm(object)
 
 ***************************************************************************************
 static function mitm.initialize(this,sck)
-local id
+local id,pos
 
     this:brwsck:=socketNew(sck)  //socket fd -> object
     this:request:=http_readmessage(this:brwsck,10000) //elso request
@@ -32,15 +33,7 @@ local id
     end
 
     if( prohibited_site(this:request) )
-        //nem jo azonnal kilepni
-        //mert azonnal ujra probalkozik
-        //sleep(2000)
         quit
-
-        //inkabb (de megse):
-        //this:brwsck:send(a"403 Forbidden"+x"0d0a0d0a")
-        //this:brwsck:send(a"404 Not Found"+x"0d0a0d0a")
-        //quit
     end
 
     dirmake("log")
@@ -53,20 +46,14 @@ local id
     ? this:request
 
 
-    if( this:request[1..4]==a"GET " )
-        connect_http(this) //HTTP
+    if( 0<(pos:=at(a"http://",this:request)) .and. pos<10 )
+        this:sslflag:=.f.
+        connect_http(this)
 
-    elseif( this:request[1..5]==a"HEAD " )
-        connect_http(this) //HTTP
-
-    elseif( this:request[1..5]==a"POST " )
-        connect_http(this) //HTTP
-
-    elseif( this:request[1..8]==a"CONNECT " )
-        connect_https(this) //HTTPS
+    elseif( a"CONNECT "==this:request::left(8) )
+        connect_connect(this)
 
     else
-
         ? "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         ? "Not implemented"
         ? "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
@@ -83,6 +70,8 @@ local err
 local pos1:=at(a'http://',this:request)
 local pos2:=at(a'/',this:request,pos1+7)
 local host:=this:request[pos1+7..pos2-1]
+
+    //peldaul: GET http://comfirm.hu/ HTTP/1.1
 
     host::=split(":")
     if( len(host)<2 )
@@ -104,13 +93,13 @@ local host:=this:request[pos1+7..pos2-1]
     this:host:=host
 
     ? "==========================================="
-    ? "HTTP connect to:", this:host
+    ? "CONNECT-HTTP to:", this:host
 
     begin
         this:srvsck:=socketNew()
-        ?? this:srvsck:connect(host[1],host[2])
+        this:srvsck:connect(host[1],host[2])
     recover err <socketerror>
-        ? "SOCKET CONNECT failed", host[1], err:description
+        ? "CONNECT-HTTP failed", host[1], err:description
         quit
     end
 
@@ -132,20 +121,70 @@ local host:=this:request[pos1+7..pos2-1]
 
 
 ***************************************************************************************
-static function connect_https(this)
+static function connect_connect(this)
+local host
 
-local srvctx,clnctx,host,pem,err
-local cafile:="/etc/ssl/certs/ca-certificates.crt"
-local capath:="/etc/ssl/certs"
+    //peldaul: 
+    // CONNECT localhost:80 HTTP/1.1
+    // CONNECT localhost:443 HTTP/1.1
 
-
-    //peldaul: CONNECT localhost:443 HTTP/1.1
     host:=this:request::split(a" ")[2]::split(a":")
     if( host::len<2 )
-        host::aadd(a"443")
+        host::aadd(a"80")
     end
     host[2]::=val
     this:host:=host
+
+    this:brwsck:send(a"HTTP/1.1 200 Connection established"+x"0d0a0d0a")  
+
+    // Most a browser azt gondolja, hogy megvan a kapcsolat,
+    // es kuldheti az uzeneteit, megvarjuk, hogy tenyleg kuldjon,
+    // es belenezunk (!) az uzenetbe, ket dolog johet:
+    // 1) client hello (elso bajt 22) --> SSL
+    // 2) normal request GET,POST,stb. --> PLAIN
+
+    select( {this:brwsck:fd} )
+
+    if( socket_lookahead(this:brwsck:fd)==22 )
+        this:sslflag:=.t.
+        connect_ssl(this)
+    else
+        this:sslflag:=.f.
+        connect_plain(this)
+    end
+
+
+***************************************************************************************
+static function connect_plain(this)
+local err
+
+    if( this:srvsck!=NIL )
+        this:srvsck:close
+    end
+
+    ? "==========================================="
+    ? "CONNECT-PLAIN to:", this:host
+
+    begin    
+        this:srvsck:=socketNew()
+        this:srvsck:connect(this:host[1],this:host[2])
+    recover err <socketerror>
+        ? "CONNECT-PLAIN failed", this:host[1], err:description
+        quit
+    end    
+
+    if( this:brwreader==NIL )
+        this:brwreader:=http_readerNew(this:brwsck,"brw")
+    end
+    this:srvreader:=http_readerNew(this:srvsck,"srv")
+
+
+***************************************************************************************
+static function connect_ssl(this)
+
+local srvctx,clnctx,pem,err
+local cafile:="/etc/ssl/certs/ca-certificates.crt"
+local capath:="/etc/ssl/certs"
 
     //MEGJEGYZES:
     //
@@ -160,11 +199,8 @@ local capath:="/etc/ssl/certs"
     //browser  <--belso halozat-->  proxy  <--internet-->  szerver
     
     
-    //eloszor
-    //kapcsolodas a browserhez
-    //a plain socketen jelezzuk, hogy megvan a kapcsolat a szerverhez
-    //a browser client hello-t kuld, ezt NEM kuldjuk tovabb a szevernek
-    //hanem ugy teszunk, mintha mi volnank a szerver:
+    //eloszor: kapcsolodas a browserhez
+    //a tcp kapcsolat mar megvan, az ssl handshake kovetkezik 
     //ropteben keszitunk egy olyan tanusitvanyt, amit a browser elfogad
     //a tanusitvanyban szerepel a szerver neve, ezt a browser ellenorzi
     //a szerver nevet korulmenyes megszerezni, mi egyszeruen
@@ -172,13 +208,11 @@ local capath:="/etc/ssl/certs"
     //profibb megoldas (1): a szerver tanusitvanyabol is ki lehetne olvasni
     //profibb megoldas (2): a client helloban levo SNI kiterjesztesbol
 
-    this:brwsck:send(a"HTTP/1.1 200 Connection established"+x"0d0a0d0a")  //felel: a kapcsolat megvan
-
     //generalunk egy host[1] nevre szolo tanusitvanyt,
     //ami ala van irva a CN=mitm nevre szolo kulccsal
     //(ami installalva van a browser authorities tabjaban)
     
-    pem:=gencert(host[1]::bin2str)
+    pem:=gencert(this:host[1]::bin2str)
 
     begin    
         clnctx:=sslctxNew("TLS_server") 
@@ -186,20 +220,23 @@ local capath:="/etc/ssl/certs"
         clnctx:use_privatekey_file(pem)
         this:brwsck:=sslconAccept(clnctx,this:brwsck)  //socket -> sslcon
     recover err <sslerror>
-        ? "SSLCON ACCEPT failed", host[1], err:description
+        ? "SSLCON-ACCEPT failed", this:host[1], err:description
         quit
     end    
 
 
-    //masodszer
-    //kapcsolodas a szerverhez
+    //masodszer: kapcsolodas a szerverhez
     //a browser helyett konnektalunk a szerverbe
     //a browser ellenorizne a szerver hitelesseget
     //mi itt csak kapcsolodunk, nem ellenorzunk 
     //VALTOZAS: beepitve az ellenorzes
 
+    if( this:srvsck!=NIL )
+        this:srvsck:close
+    end
+
     ? "==========================================="
-    ? "HTTPS connect to:", this:host
+    ? "CONNECT-SSL to:", this:host
 
     begin    
         srvctx:=sslctxNew() 
@@ -209,14 +246,15 @@ local capath:="/etc/ssl/certs"
         srvctx:load_verify_locations(cafile,capath)
 
         this:srvsck:=sslconNew(srvctx)
-        ?? this:srvsck:connect(host[1],host[2])
+        this:srvsck:connect(this:host[1],this:host[2])
     recover err <socketerror>
-        ? "SSLCON CONNECT failed", host[1], err:description
+        ? "CONNECT-SSL failed", this:host[1], err:description
         quit
     end    
 
-
-    this:brwreader:=http_readerNew(this:brwsck,"brw")
+    if( this:brwreader==NIL )
+        this:brwreader:=http_readerNew(this:brwsck,"brw")
+    end
     this:srvreader:=http_readerNew(this:srvsck,"srv")
 
 
@@ -233,16 +271,30 @@ local continue:=.t.
             forward_to_browser(this,status)    
 
         elseif( (this:request:=this:brwreader:next(@status))!=NIL )
-            if( status==STATUS_HEADER )
+            if( !this:sslflag .and. status==STATUS_HEADER )
+
+                //titkositott kommunikacio eseten 
+                //ide nem johet, mert a proxy nem latja a headert, 
+                //tehat a browser nem kuldhet a proxynak szolo utasitast 
+
+                //plain kommunikacio eseten
                 //a browser a meglevo TCP kapcsolat bontasa nelkul
                 //olyan requestet is kuldhet, amiben abszolut URL van
                 //ilyenkor konnektalni kell a megadott (uj) URL-hez
-                pos:=at(a"http://",this:request)
-                if( 0<pos .and. pos<10 )
+
+                if( 0<(pos:=at(a"http://",this:request)) .and. pos<10 )
                     if( prohibited_site(this:request) )
                         quit
                     end
+                    ? "reconnect-http"
                     connect_http(this)
+
+                elseif( a"CONNECT "==this:request::left(8) )
+                    if( prohibited_site(this:request) )
+                        quit
+                    end
+                    ? "reconnect-connect"
+                    connect_connect(this)
                 end
             end
             forward_to_server(this,status)
@@ -294,14 +346,14 @@ local nbyte:=this:srvsck:send(this:request)
         ? "..........................................."
         ? "FORWARDED header to server",this:host[1], nbyte
         ? this:request
-    elseif( status==STATUS_BODY )
-        ? "..........................................."
-        ? "forwarded body to server", this:host[1], nbyte
-        ?
-    elseif( status==STATUS_CHUNK )
-        ? "..........................................."
-        ? "forwarded chunk to server", this:host[1], nbyte
-        ?
+//    elseif( status==STATUS_BODY )
+//        ? "..........................................."
+//        ? "forwarded body to server", this:host[1], nbyte
+//        ?
+//    elseif( status==STATUS_CHUNK )
+//        ? "..........................................."
+//        ? "forwarded chunk to server", this:host[1], nbyte
+//        ?
     end
 
 
@@ -312,14 +364,14 @@ local nbyte:=this:brwsck:send(this:response)
         ? "..........................................."
         ? "FORWARDED header to browser",this:host[1], nbyte
         ? this:response
-    elseif( status==STATUS_BODY )
-        ? "..........................................."
-        ? "forwarded body to browser", this:host[1], nbyte
-        ?
-    elseif( status==STATUS_CHUNK )
-        ? "..........................................."
-        ? "forwarded chunk to browser", this:host[1], nbyte
-        ?
+//    elseif( status==STATUS_BODY )
+//        ? "..........................................."
+//        ? "forwarded body to browser", this:host[1], nbyte
+//        ?
+//    elseif( status==STATUS_CHUNK )
+//        ? "..........................................."
+//        ? "forwarded chunk to browser", this:host[1], nbyte
+//        ?
     end
 
 

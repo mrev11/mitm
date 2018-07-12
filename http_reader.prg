@@ -13,6 +13,7 @@ class http_reader(object)
     attrib  status
     attrib  clen
     attrib  trne
+    attrib  upgrade
     
     method  initialize
     method  printstate
@@ -77,6 +78,9 @@ local msg
     elseif( status==STATUS_CHUNK )
         msg:=next_chunk(this)
 
+    elseif( status==STATUS_WEBSCK )
+        msg:=next_websck(this)
+
     elseif( status==STATUS_END )
         msg:=NIL
     end
@@ -124,6 +128,11 @@ local msg,pos:=at(crlf+crlf,this:buffer)
         this:trne::=lower
     end
 
+    this:upgrade:=http_getheader(msg,"upgrade")
+    if( this:upgrade!=NIL )
+        this:upgrade::=lower
+    end
+
     if( !empty(this:clen) )
         //ez kovetkezik: ismert hosszusagu body
         this:status:=STATUS_BODY 
@@ -131,6 +140,10 @@ local msg,pos:=at(crlf+crlf,this:buffer)
     elseif( this:trne==a"chunked" )
         //ez kovetkezik: az elejen megadott hosszusagu chunk
         this:status:=STATUS_CHUNK 
+
+    elseif( this:upgrade==a"websocket" )
+        //ez kovetkezik: folyamatos forgalom (nem elemezheto)
+        this:status:=STATUS_WEBSCK
 
     else
         //ez kovetkezik: ures body
@@ -163,6 +176,18 @@ local msg
 
     return msg
 
+
+*************************************************************************************************
+static function next_websck(this)  //folyamatos tovabbitas      
+local msg
+
+    if( this:buffer::len>0 )
+        msg:=this:buffer
+        this:buffer:=a""
+        this:status:=STATUS_WEBSCK
+    end
+
+    return msg
 
 *************************************************************************************************
 static function next_chunk(this)        

@@ -15,6 +15,7 @@ class mitm(object)
 
     attrib  host
     attrib  sslflag
+    attrib  hellobyte
     
     method  initialize
     method  loop
@@ -33,6 +34,7 @@ local id,pos
     end
 
     if( prohibited_site(this:request) )
+        this:brwsck:send(a"HTTP/1.1 503 Service Unavailable"+x"0d0a0d0a")  
         quit
     end
 
@@ -144,10 +146,19 @@ local host
     // 2) normal request GET,POST,stb. --> PLAIN
 
     select( {this:brwsck:fd} )
+    this:hellobyte:=socket_lookahead(this:brwsck:fd)
 
-    if( socket_lookahead(this:brwsck:fd)==22 )
+    if( this:hellobyte==0 )
+        //neha 0 is jon
+        //szerintem ilyenkor a browser egyszeruen 
+        //meggondolta magat es letette a kagylot
+        //(a telefonbetyar)
+        quit
+
+    elseif( this:hellobyte==22 )
         this:sslflag:=.t.
         connect_ssl(this)
+
     else
         this:sslflag:=.f.
         connect_plain(this)
@@ -163,7 +174,7 @@ local err
     end
 
     ? "==========================================="
-    ? "CONNECT-PLAIN to:", this:host
+    ? "CONNECT-PLAIN to:", this:host, this:hellobyte
 
     begin    
         this:srvsck:=socketNew()
@@ -236,7 +247,7 @@ local capath:="/etc/ssl/certs"
     end
 
     ? "==========================================="
-    ? "CONNECT-SSL to:", this:host
+    ? "CONNECT-SSL to:", this:host, this:hellobyte
 
     begin    
         srvctx:=sslctxNew() 
@@ -284,6 +295,7 @@ local continue:=.t.
 
                 if( 0<(pos:=at(a"http://",this:request)) .and. pos<10 )
                     if( prohibited_site(this:request) )
+                        this:brwsck:send(a"HTTP/1.1 503 Service Unavailable"+x"0d0a0d0a")  
                         quit
                     end
                     ? "reconnect-http"
@@ -291,10 +303,18 @@ local continue:=.t.
 
                 elseif( a"CONNECT "==this:request::left(8) )
                     if( prohibited_site(this:request) )
+                        this:brwsck:send(a"HTTP/1.1 503 Service Unavailable"+x"0d0a0d0a")  
                         quit
                     end
                     ? "reconnect-connect"
                     connect_connect(this)
+                    
+                    //Ide sosem jon:
+                    //Elmeletileg johetne, de nincs ra pelda,
+                    //ez az ag ezert egyelore nincs tesztelve.
+                    //A gyakorlatban CONNECT csak elso requestkent fordul elo, 
+                    //mindig SSL kapcsolat letrehozasat szolgalja, kiveve a plain
+                    //websocket esetet (az is csak nalam fordul elo).
                 end
             end
             forward_to_server(this,status)
@@ -376,4 +396,3 @@ local nbyte:=this:brwsck:send(this:response)
 
 
 ***************************************************************************************
-

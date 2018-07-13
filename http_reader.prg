@@ -148,6 +148,13 @@ local msg,pos:=at(crlf+crlf,this:buffer)
     else
         //ez kovetkezik: ures body
         this:status:=STATUS_END
+
+        //Itt meg foglalkozni lehetne azzal az esettel,
+        //amikor nincs content-length, de megis jon body,
+        //ami olyankor (a regebbi protokoll verzio szerint)
+        //a kapcsolat bontasaig olvashato adatokbol all.
+        //A gyakorlatban mindig van content-length.
+         
     end        
 
 

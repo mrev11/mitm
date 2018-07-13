@@ -1,3 +1,8 @@
+2018.07.12 503 Service Unavailable kuldes:
+  503 Service Unavailable-t kuld a kitiltott site-okhoz valo 
+  konnektalas helyett,  korabban egyszeruen csak kilepett.
+  A bongeszo client-hello kuldes helyett idonkent bont.
+
 2018.07.12 plain/ssl kapcsolat felismerese javitva:
   socket_lookahead() megadja a kovetkezo olvasassal kaphato bajtot;
   CONNECT requestek kezelve plain es ssl esetben is;

@@ -145,16 +145,32 @@ local msg,pos:=at(crlf+crlf,this:buffer)
         //ez kovetkezik: folyamatos forgalom (nem elemezheto)
         this:status:=STATUS_WEBSCK
 
-    else
-        //ez kovetkezik: ures body
-        this:status:=STATUS_END
+    elseif( http_getheader(msg,"connection")==a"close" )
 
-        //Itt meg foglalkozni lehetne azzal az esettel,
+        //Itt meg foglalkozni kell azzal az esettel,
         //amikor nincs content-length, de megis jon body,
         //ami olyankor (a regebbi protokoll verzio szerint)
         //a kapcsolat bontasaig olvashato adatokbol all.
-        //A gyakorlatban mindig van content-length.
-         
+        //A gyakorlatban szinte mindig van content-length.
+
+        select({this:sck} )
+        while( this:read )
+            select({this:sck} )
+        end
+        this:clen:=len(this:buffer)
+
+        if( this:clen>0 )
+            //ez kovetkezik: mar beolvasott body
+            this:status:=STATUS_BODY
+        else
+            //ez kovetkezik: vege
+            this:status:=STATUS_END
+        end 
+
+    else
+        //ez kovetkezik: vege
+        this:status:=STATUS_END
+
     end        
 
 

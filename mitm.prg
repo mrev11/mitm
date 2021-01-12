@@ -79,6 +79,7 @@ local host:=this:request[pos1+7..pos2-1]
     if( len(host)<2 )
         aadd(host,a"80")
     end
+    host[1]::=rewrite
     host[2]:=val(host[2])
 
     this:request:=this:request[1..pos1-1]+this:request[pos2..]
@@ -134,6 +135,7 @@ local host
     if( host::len<2 )
         host::aadd(a"80")
     end
+    host[1]::=rewrite
     host[2]::=val
     this:host:=host
 

@@ -59,7 +59,7 @@ local recv:=this:sck:recvall
         return .f.
     end
     this:buffer+=recv
-    this:printstate
+    //this:printstate
     return .t.
 
 
@@ -204,7 +204,12 @@ local msg
 static function next_websck(this)  //folyamatos tovabbitas      
 local msg
 
-    if( this:buffer::len>0 )
+    if( (msg:=readmessage(this:buffer))!=NIL )
+            //belenezunk
+            msg::=strtran(bin(10),a"")
+            msg::=strtran(bin(13),a"")
+            msg::=strtran(bin(27),a"\E")
+            ?? "", msg::len::str(6), a"["+msg::left(64)+a"]"
         msg:=this:buffer
         this:buffer:=a""
         this:status:=STATUS_WEBSCK

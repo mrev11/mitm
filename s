@@ -1,3 +1,4 @@
 #!/bin/bash
-ln -sf .git/local/sites-prohibited .
+rm -f *.log
+cp site/sites-visited1 ./sites-prohibited
 listener/mitm_listener.exe

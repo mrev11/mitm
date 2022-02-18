@@ -205,13 +205,9 @@ static function next_websck(this)  //folyamatos tovabbitas
 local msg
 
     if( (msg:=readmessage(this:buffer))!=NIL )
-            //belenezunk
-            msg::=strtran(bin(10),a"")
-            msg::=strtran(bin(13),a"")
-            msg::=strtran(bin(27),a"\E")
-            ?? "", msg::len::str(6), a"["+msg::left(64)+a"]"
-        msg:=this:buffer
-        this:buffer:=a""
+        //belenezunk
+        ?? "", msg::len::str(6), bin2hex(msg::left(16))
+        this:buffer::=substr(msg::len+1)
         this:status:=STATUS_WEBSCK
     end
 

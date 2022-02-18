@@ -6,6 +6,8 @@
 //(ugyanis a resuseaddress sajnos nem hatasos)
 
 
-function main(sck)
+function main(sck,counter) 
+    session_counter(counter)
     mitmNew(val(sck)):loop
+
     

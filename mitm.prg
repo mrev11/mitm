@@ -23,7 +23,7 @@ class mitm(object)
 
 ***************************************************************************************
 static function mitm.initialize(this,sck)
-local id,pos
+local pos
 
     this:brwsck:=socketNew(sck)  //socket fd -> object
     this:request:=http_readmessage(this:brwsck,10000) //elso request
@@ -39,8 +39,7 @@ local id,pos
     end
 
     dirmake("log")
-    id:=date()::dtos+"-"+time()+"-"+getpid()::str::alltrim
-    set alternate to "log/log-"+id::strtran(":","-")
+    set alternate to "log/"+logfile()
     set alternate on
 
     ? "==========================================="

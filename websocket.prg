@@ -19,7 +19,7 @@
 #define RECV(n)  (c:=buffer::substr(offset,n),offset+=n,c::len==n)
 
 ***************************************************************************************
-function readmessage(buffer)
+function readmessage(buffer,offset)
 
 local err
 local fragment,c,n
@@ -31,7 +31,8 @@ local payload_len
 local masking_key
 local timeout:=TIMEOUT
 local body
-local offset:=1
+
+    offset:=1
 
     while(.t.)
 

@@ -6,17 +6,13 @@
 function session_counter(c)
 static counter
     if( c!=NIL )
-        counter:=c
+        counter:=padl(c,4,"0")
     end
     return counter
 
 
-
-function writelog(x)
+function logfile()
 static cnt:=0
-local fd
-    fd:=fopen( "LOG-"+session_counter()+"-"+(++cnt)::str::alltrim+".log",FO_CREATE+FO_READWRITE)
-    fwrite(fd,x)
-    fclose(fd)
+    return "log-"+session_counter()+"-"+(++cnt)::str::alltrim::padl(4,"0")+".log"
 
 

@@ -201,17 +201,47 @@ local msg
 
 
 *************************************************************************************************
-static function next_websck(this)  //folyamatos tovabbitas      
+static function _next_websck(this)  //folyamatos tovabbitas      
 local msg
-
-    if( (msg:=readmessage(this:buffer))!=NIL )
-        //belenezunk
-        ?? "", msg::len::str(6), bin2hex(msg::left(16))
-        this:buffer::=substr(msg::len+1)
+    if( this:buffer::len>0 )
+        msg:=this:buffer
+        this:buffer:=a""
         this:status:=STATUS_WEBSCK
     end
 
     return msg
+
+
+static function next_websck(this)  //uzenet hataroknal darabolva tovabbit
+local msg,offset
+    if( (msg:=readmessage(this:buffer,@offset))!=NIL )
+
+        ? "    > "
+        ?? this:buffer::len::str(5)
+        ?? offset::str(5)
+        ?? msg::len::str(5)
+        ?? " ->",format(msg)
+
+        msg:=this:buffer::left(offset-1) // kiolvasott darab
+        this:buffer::=substr(offset)     // a buffer maradeka
+        this:status:=STATUS_WEBSCK
+    end
+
+    return msg
+
+
+static function _format(msg) 
+    return bin2hex(msg::left(32)) 
+
+static function format(msg)
+    msg::=left(64) 
+    msg::=strtran(bin(8),a"\b")
+    msg::=strtran(bin(9),a"\t")
+    msg::=strtran(bin(10),a"\n")
+    msg::=strtran(bin(13),a"\r")
+    msg::=strtran(bin(27),a"\E")
+    return msg
+
 
 *************************************************************************************************
 static function next_chunk(this)        
